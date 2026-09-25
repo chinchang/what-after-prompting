@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>What After Prompting</title>
+    <meta name="description" content="You hit enter. The model is thinking. Here's what to do while you wait." />
+    <meta name="theme-color" content="#8ec5e8" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&family=Zen+Maru+Gothic:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <canvas id="scene" aria-hidden="true"></canvas>
+    <div class="veil" aria-hidden="true"></div>
+
+    <div id="intro" class="intro" aria-hidden="true">
+      <p class="intro-kicker">you hit enter.</p>
+      <p class="intro-title">now what?</p>
+    </div>
+
+    <header class="top">
+      <a class="brand" href="/" aria-label="What After Prompting">
+        <svg class="brand-mark" viewBox="0 0 48 32" aria-hidden="true">
+          <path d="M12 28a9 9 0 0 1-1-17.9A12 12 0 0 1 34 8a9 9 0 0 1 3 17.5V28Z" />
+        </svg>
+        <span>
+          <strong>What After Prompting</strong>
+          <em>little things to do while the model thinks</em>
+        </span>
+      </a>
+      <div class="top-right">
+      <button id="music" class="sound" type="button" aria-pressed="false" aria-label="Music and sound effects" title="Sound on / off (M)">
+        <span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      </button>
+      </div>
+    </header>
+
+    <nav class="filters" id="filters" aria-label="How long is the wait?">
+      <span class="filters-label">The wait looks…</span>
+      <button type="button" data-filter="all" aria-pressed="true">Any length</button>
+      <button type="button" data-filter="quick" aria-pressed="false">Short</button>
+      <button type="button" data-filter="short" aria-pressed="false">A few minutes</button>
+      <button type="button" data-filter="long" aria-pressed="false">Very long</button>
+    </nav>
+
+    <main class="card" id="card" data-mode="browse" aria-live="polite">
+      <section class="view view-browse">
+        <div class="meta">
+          <span class="count" id="count">01 / 15</span>
+          <span class="chip" id="duration" data-kind="quick">~30 sec</span>
+        </div>
+        <h1 class="title" id="title">Take a sip of water</h1>
+        <p class="blurb" id="blurb"></p>
+        <div class="controls">
+          <button id="prev" class="round" type="button" aria-label="Previous idea">
+            <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" /></svg>
+          </button>
+          <button id="next" class="round" type="button" aria-label="Next idea">
+            <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" /></svg>
+          </button>
+          <button id="spin" class="ghost" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5" /></svg>
+            Spin for me
+          </button>
+          <button id="go" class="primary" type="button">I'll do this</button>
+        </div>
+      </section>
+
+      <section class="view view-doing">
+        <span class="eyebrow">Off you go</span>
+        <h1 class="title" id="doing-title"></h1>
+        <p class="blurb tip" id="doing-tip"></p>
+        <div class="away">
+          <span>away for</span>
+          <b id="away">0:00</b>
+        </div>
+        <div class="controls">
+          <button id="back" class="primary" type="button">I'm back</button>
+          <button id="other" class="link" type="button">pick something else</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="hint" aria-hidden="true">
+      <kbd>←</kbd><kbd>→</kbd> browse · <kbd>space</kbd> spin · <kbd>enter</kbd> pick · <kbd>m</kbd> sound
+    </footer>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
