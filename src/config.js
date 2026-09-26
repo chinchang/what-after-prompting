@@ -9,9 +9,10 @@ export const CONFIG = {
   },
 
   render: {
-    maxPixelRatio: 2,
+    maxPixelRatio: 1.5, // above this the soft toon look gains little and the GPU works much harder
     msaaSamples: 4, // antialiasing samples for the post-processing target
-    shadowMapSize: 2048,
+    shadowMapSize: 1024,
+    mergeStaticParts: true, // combine each island's non-moving parts to cut draw calls
   },
 
   /* Day or night follows the visitor's local clock. */
@@ -103,6 +104,7 @@ export const CONFIG = {
     spinLaps: 1, // full extra laps before landing
     dimmedScale: 0.55, // islands hidden by the filter shrink to this…
     dimmedDrop: -1.6, // …and sink by this much
+    animateRange: 2, // only islands this many steps from the front animate
     bobHeight: 0.18,
     bobSpeed: 0.6,
   },

@@ -1,10 +1,12 @@
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { BokehShader } from 'three/addons/shaders/BokehShader.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { CONFIG } from './config.js';
 import { SILENT } from './sfx.js';
+import { mergeStaticParts } from './optimize.js';
 import { shared, createSky, createStars, createMoon, createClouds, createBirds, createPollen, createIsland, grassBrightness } from './world.js';
 
 const TAU = Math.PI * 2;
@@ -13,6 +15,24 @@ const R = RING.radius;
 const easeInOutCubic = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
 const easeOutQuart = (x) => 1 - Math.pow(1 - x, 4);
 const wrap = (a) => ((((a + Math.PI) % TAU) + TAU) % TAU) - Math.PI;
+
+// Bokeh depth of field that reads the depth the main render already produced,
+// instead of drawing the whole scene a second time just to get depth.
+class DepthOfFieldPass extends ShaderPass {
+  constructor(camera) {
+    super(BokehShader, 'tColor');
+    this.material.defines.DEPTH_PACKING = 0;
+    this.camera = camera;
+  }
+  render(renderer, writeBuffer, readBuffer, deltaTime, maskActive) {
+    const u = this.uniforms;
+    u.tDepth.value = readBuffer.depthTexture;
+    u.nearClip.value = this.camera.near;
+    u.farClip.value = this.camera.far;
+    u.aspect.value = this.camera.aspect;
+    super.render(renderer, writeBuffer, readBuffer, deltaTime, maskActive);
+  }
+}
 
 export function createStage(canvas, activities) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -27,13 +47,20 @@ export function createStage(canvas, activities) {
   const camera = new THREE.PerspectiveCamera(CAM.fov, 1, 0.1, 1400);
 
   // Soft depth of field: the front island stays crisp, neighbours and the far archipelago melt a little.
-  // The composer's MSAA target keeps edges smooth now that the canvas's own antialiasing is bypassed.
+  // The composer's MSAA target keeps edges smooth now that the canvas's own antialiasing is bypassed,
+  // and its depth texture feeds the blur.
   const composer = new EffectComposer(
     renderer,
-    new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: RENDER.msaaSamples }),
+    new THREE.WebGLRenderTarget(1, 1, {
+      type: THREE.HalfFloatType,
+      samples: RENDER.msaaSamples,
+      depthTexture: new THREE.DepthTexture(1, 1),
+    }),
   );
   composer.addPass(new RenderPass(scene, camera));
-  const bokeh = new BokehPass(scene, camera, { focus: 15, aperture: DOF.aperture, maxblur: DOF.maxBlur });
+  const bokeh = new DepthOfFieldPass(camera);
+  bokeh.uniforms.aperture.value = DOF.aperture;
+  bokeh.uniforms.maxblur.value = DOF.maxBlur;
   bokeh.enabled = DOF.enabled;
   composer.addPass(bokeh);
   composer.addPass(new OutputPass());
@@ -121,6 +148,12 @@ export function createStage(canvas, activities) {
     const props = new THREE.Group();
     island.root.add(props);
     const update = activity.build(props) || null;
+    if (RENDER.mergeStaticParts) {
+      mergeStaticParts(island.root, (t) => {
+        island.update(t);
+        update?.(t, 1 / 60);
+      });
+    }
     holder.userData = { index: i, island, update, sound: props.userData.sound, phase: i * 1.7, targetScale: 1, targetDrop: 0, drop: 0 };
     ring.add(holder);
     return holder;
@@ -270,17 +303,22 @@ export function createStage(canvas, activities) {
     }
 
     // Only the island in front is heard; the rest still run so their timing stays in step.
+    // Only islands near the front animate — the far side is small and blurred anyway.
     const sfx = getSfx();
+    const frontFloat = -theta / STEP;
     holders.forEach((h, i) => {
       const u = h.userData;
+      const near = Math.abs(wrap((i - frontFloat) * STEP)) / STEP <= RING.animateRange + 0.5;
       u.sound?.(t, dt, !tween && i === targetIndex ? sfx : SILENT);
       const s = THREE.MathUtils.damp(h.scale.x, u.targetScale, 4, dt);
       h.scale.setScalar(s);
       u.drop = THREE.MathUtils.damp(u.drop, u.targetDrop, 4, dt);
       h.position.y = u.drop + Math.sin(t * RING.bobSpeed + u.phase) * RING.bobHeight;
       h.children[0].rotation.z = Math.sin(t * 0.4 + u.phase) * 0.015;
-      u.island.update(t);
-      u.update?.(t, dt);
+      if (near) {
+        u.island.update(t);
+        u.update?.(t, dt);
+      }
     });
 
     if (night !== nightTarget) {

@@ -18,10 +18,15 @@ const cache = new Map();
 
 export function toon(color, extra) {
   if (extra) {
+    // Identical simple settings share one material (lets static parts merge); textures stay unique.
+    const shareable = Object.values(extra).every((v) => typeof v !== 'object');
+    const key = shareable ? `${color}|${JSON.stringify(extra)}` : null;
+    if (key && cache.has(key)) return cache.get(key);
     // Toon materials have no flatShading switch; `part` fakes it by splitting faces.
     const { flatShading, ...rest } = extra;
     const mat = new THREE.MeshToonMaterial({ color, gradientMap: gradientMap(), ...rest });
     mat.userData.faceted = !!flatShading;
+    if (key) cache.set(key, mat);
     return mat;
   }
   let mat = cache.get(color);
